@@ -255,12 +255,16 @@ NEVER_INLINE bool Interpreter::resolveGlobal(CallFrame* callFrame, Instruction* 
     Structure* structure = vPC[3].u.structure.get();
     int offset = vPC[4].u.operand;
 
+    Identifier& ident = codeBlock->identifier(property);
     if (structure == globalObject->structure()) {
-        callFrame->uncheckedR(dst) = JSValue(globalObject->getDirectOffset(offset));
+        // SRL: Log a read from a global variable.
+        JSCellFieldAccess(ActionLog::READ_MEMORY, globalObject, ident.ascii().data());
+        JSValue result = JSValue(globalObject->getDirectOffset(offset));
+        MemoryValue(callFrame, result);
+        callFrame->uncheckedR(dst) = result;
         return true;
     }
 
-    Identifier& ident = codeBlock->identifier(property);
     PropertySlot slot(globalObject);
     if (globalObject->getPropertySlot(callFrame, ident, slot)) {
     	// SRL: Log a read from a global variable.
@@ -334,14 +338,16 @@ NEVER_INLINE bool Interpreter::resolveGlobalDynamic(CallFrame* callFrame, Instru
         }
         ++iter;
     }
-    
+
+    Identifier& ident = codeBlock->identifier(property);
     if (structure == globalObject->structure()) {
-        callFrame->uncheckedR(dst) = JSValue(globalObject->getDirectOffset(offset));
+        JSCellFieldAccess(ActionLog::READ_MEMORY, globalObject, ident.ascii().data());
+        JSValue result = JSValue(globalObject->getDirectOffset(offset));
+        callFrame->uncheckedR(dst) = result;
         ASSERT(callFrame->uncheckedR(dst).jsValue());
         return true;
     }
 
-    Identifier& ident = codeBlock->identifier(property);
     PropertySlot slot(globalObject);
     if (globalObject->getPropertySlot(callFrame, ident, slot)) {
     	// SRL: Log a read from a global variable.
